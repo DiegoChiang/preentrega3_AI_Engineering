@@ -26,9 +26,9 @@ Ejemplo de salida:
 
 ```json
 {
-  "technologies": ["Kubernetes", "PostgreSQL"],
-  "criticality": "alta",
-  "technical_summary": "La API presenta errores generalizados por agotamiento del pool de PostgreSQL."
+  "tecnologias": ["Kubernetes", "PostgreSQL"],
+  "nivel_de_criticidad": "alta",
+  "resumen_tecnico": "La API presenta errores generalizados por agotamiento del pool de PostgreSQL."
 }
 ```
 
@@ -109,6 +109,12 @@ extract-entities --text "El deployment de Kubernetes devuelve 503 porque Redis a
 extract-entities --file data/runbook_api_pagos.md
 ```
 
+### Demostración asíncrona de extracción
+
+```bash
+python examples/extraction_demo.py
+```
+
 ### Ingesta local
 
 ```bash
@@ -164,7 +170,8 @@ requieren credenciales.
 ```text
 .
 ├── data/                         # Base documental de ejemplo
-├── docs/architecture.md          # Componentes y flujo de datos
+├── docs/                         # Arquitectura y guías operativas
+├── examples/extraction_demo.py   # Demostración asíncrona de extracción
 ├── src/incident_intelligence/
 │   ├── cli/                      # Comandos ejecutables
 │   ├── extraction/               # Esquema, cadena LCEL y servicio
@@ -185,5 +192,6 @@ requieren credenciales.
 - Los resultados estructurados rechazan campos inesperados.
 - Las cancelaciones asíncronas no se convierten en reintentos.
 
-Detalles del cliente asíncrono en [docs/llm_client.md](docs/llm_client.md) y del flujo completo en
+Detalles del cliente asíncrono en [docs/llm_client.md](docs/llm_client.md), del pipeline de
+extracción en [docs/extraction_pipeline.md](docs/extraction_pipeline.md) y del flujo completo en
 [docs/architecture.md](docs/architecture.md).

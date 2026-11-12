@@ -6,9 +6,7 @@ import json
 import logging
 from pathlib import Path
 
-from incident_intelligence.config import Settings
-from incident_intelligence.extraction.chain import build_extraction_chain
-from incident_intelligence.extraction.service import EntityExtractionService
+from incident_intelligence.extraction.chain import process_text
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -20,10 +18,14 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 async def run(text: str) -> None:
-    settings = Settings()
-    service = EntityExtractionService(build_extraction_chain(settings))
-    result = await service.process_text(text)
-    print(json.dumps(result.model_dump(mode="json"), ensure_ascii=False, indent=2))
+    result = await process_text(text)
+    print(
+        json.dumps(
+            result.model_dump(mode="json", by_alias=True),
+            ensure_ascii=False,
+            indent=2,
+        )
+    )
 
 
 def main() -> None:

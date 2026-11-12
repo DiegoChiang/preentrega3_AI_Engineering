@@ -46,9 +46,3 @@ class EntityExtractionService:
         )
         return parsed
 
-
-async def process_text(text: str, chain: AsyncRunnable) -> TechnicalEntityExtraction:
-    """Atajo funcional para ejecutar la cadena con ``ainvoke``."""
-
-    return await EntityExtractionService(chain).process_text(text)
-

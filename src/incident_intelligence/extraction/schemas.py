@@ -12,11 +12,24 @@ class Criticality(StrEnum):
 
 
 class TechnicalEntityExtraction(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
-    technologies: list[str] = Field(min_length=1, max_length=30)
-    criticality: Criticality
-    technical_summary: str = Field(min_length=10, max_length=2000)
+    technologies: list[str] = Field(
+        alias="tecnologias",
+        min_length=1,
+        max_length=30,
+        description="Tecnologías mencionadas explícitamente en el texto de entrada.",
+    )
+    criticality: Criticality = Field(
+        alias="nivel_de_criticidad",
+        description="Impacto operativo clasificado como baja, media o alta.",
+    )
+    technical_summary: str = Field(
+        alias="resumen_tecnico",
+        min_length=10,
+        max_length=2000,
+        description="Resumen técnico sustentado únicamente por el texto de entrada.",
+    )
 
     @field_validator("technologies")
     @classmethod
@@ -31,4 +44,12 @@ class TechnicalEntityExtraction(BaseModel):
         if not normalized:
             raise ValueError("Debe existir al menos una tecnología")
         return normalized
+
+    @field_validator("technical_summary")
+    @classmethod
+    def normalize_summary(cls, value: str) -> str:
+        clean = value.strip()
+        if len(clean) < 10:
+            raise ValueError("El resumen técnico debe contener al menos 10 caracteres")
+        return clean
 
