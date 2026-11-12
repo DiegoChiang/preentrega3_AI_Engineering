@@ -78,7 +78,7 @@ extract-entities --text "PostgreSQL agotó el pool y la API devuelve errores 503
 Desde archivo:
 
 ```powershell
-extract-entities --file data/runbook_api_pagos.md
+extract-entities --file ejemplo.txt
 ```
 
 Demostración asíncrona:

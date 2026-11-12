@@ -4,20 +4,17 @@ build-backend = "hatchling.build"
 
 [project]
 name = "incident-intelligence-system"
-version = "0.3.0"
-description = "Clientes LLM asíncronos, extracción técnica estructurada y RAG local persistente."
+version = "0.2.0"
+description = "Pipeline asíncrono de extracción técnica con LCEL y Pydantic."
 readme = "README.md"
 requires-python = ">=3.12"
 license = { text = "MIT" }
 authors = [{ name = "Diego Chiang Meléndez" }]
 dependencies = [
   "anthropic>=0.75,<2",
-  "chromadb>=1.0,<2",
   "langchain-anthropic>=1.0,<2",
-  "langchain-chroma>=1.0,<2",
   "langchain-core>=1.0,<2",
   "langchain-openai>=1.0,<2",
-  "langchain-text-splitters>=1.0,<2",
   "openai>=2.0,<3",
   "pydantic>=2.10,<3",
   "pydantic-settings>=2.7,<3",
@@ -34,9 +31,7 @@ dev = [
 ]
 
 [project.scripts]
-llm-demo = "incident_intelligence.cli.llm_demo:main"
 extract-entities = "incident_intelligence.cli.extract_entities:main"
-rag-local = "incident_intelligence.cli.rag_local:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/incident_intelligence"]
@@ -46,9 +41,6 @@ addopts = "-q --strict-markers"
 asyncio_mode = "auto"
 testpaths = ["tests"]
 pythonpath = ["src"]
-filterwarnings = [
-  "ignore:'asyncio.iscoroutinefunction'.*:DeprecationWarning:chromadb.*",
-]
 
 [tool.ruff]
 line-length = 100

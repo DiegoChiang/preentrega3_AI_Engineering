@@ -42,17 +42,3 @@ def build_chat_model(settings: Settings) -> Any:
     }
     return ChatAnthropic(**kwargs)
 
-
-def build_openai_embeddings(settings: Settings) -> Any:
-    """Construye embeddings compatibles con la ingesta y la consulta."""
-
-    configure_system_certificate_store()
-    try:
-        from langchain_openai import OpenAIEmbeddings
-    except ImportError as exc:  # pragma: no cover - depende del entorno
-        raise RuntimeError("Instala la dependencia 'langchain-openai'") from exc
-    return OpenAIEmbeddings(
-        api_key=settings.require_provider_key("openai"),
-        model=settings.openai_embedding_model,
-    )
-
