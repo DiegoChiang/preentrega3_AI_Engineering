@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "incident-intelligence-system"
 version = "0.3.0"
-description = "Clientes LLM asíncronos, extracción técnica estructurada y RAG local persistente."
+description = "Sistema RAG local asíncrono con ChromaDB, LCEL y Pydantic."
 readme = "README.md"
 requires-python = ">=3.12"
 license = { text = "MIT" }
@@ -34,8 +34,6 @@ dev = [
 ]
 
 [project.scripts]
-llm-demo = "incident_intelligence.cli.llm_demo:main"
-extract-entities = "incident_intelligence.cli.extract_entities:main"
 rag-local = "incident_intelligence.cli.rag_local:main"
 
 [tool.hatch.build.targets.wheel]
