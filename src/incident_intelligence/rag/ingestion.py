@@ -20,12 +20,18 @@ class RAGIngestor:
         manifest_path: Path,
         chunk_size: int,
         chunk_overlap: int,
+        index_signature: str | None = None,
     ) -> None:
+        if chunk_size < 500:
+            raise ValueError("chunk_size debe ser al menos 500")
+        if chunk_overlap < 0 or chunk_overlap >= chunk_size:
+            raise ValueError("chunk_overlap debe estar entre 0 y chunk_size")
         self.repository = repository
         self.data_dir = data_dir
         self.manifest_path = manifest_path
         self.chunk_size = chunk_size
         self.chunk_overlap = chunk_overlap
+        self.index_signature = index_signature or f"lexical:{chunk_size}:{chunk_overlap}"
 
     def _read_manifest(self) -> dict[str, Any]:
         if not self.manifest_path.exists():
@@ -47,6 +53,12 @@ class RAGIngestor:
         documents = await asyncio.to_thread(load_knowledge_documents, self.data_dir)
         manifest = self._read_manifest()
         previous_sources: dict[str, Any] = manifest.get("sources", {})
+        if manifest.get("index_signature") != self.index_signature:
+            for previous in previous_sources.values():
+                await self.repository.delete(
+                    [str(value) for value in previous.get("chunk_ids", [])]
+                )
+            previous_sources = {}
         next_sources: dict[str, Any] = {}
         added = 0
         skipped = 0
@@ -80,6 +92,9 @@ class RAGIngestor:
                 [str(value) for value in previous_sources[source].get("chunk_ids", [])]
             )
 
-        await asyncio.to_thread(self._write_manifest, {"sources": next_sources})
+        await asyncio.to_thread(
+            self._write_manifest,
+            {"index_signature": self.index_signature, "sources": next_sources},
+        )
         return {"documents": len(documents), "chunks_added": added, "documents_skipped": skipped}
 

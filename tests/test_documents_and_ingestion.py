@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from incident_intelligence.rag.chunking import split_documents
+from incident_intelligence.rag.chunking import count_lexical_tokens, split_documents
 from incident_intelligence.rag.documents import load_knowledge_documents
 from incident_intelligence.rag.ingestion import RAGIngestor
 from incident_intelligence.rag.schemas import DocumentChunk, KnowledgeDocument, RetrievedChunk
@@ -35,7 +35,7 @@ def test_loader_accepts_txt_and_markdown_only(tmp_path: Path) -> None:
 
 def test_splitter_uses_stable_ids_and_overlap() -> None:
     document = KnowledgeDocument(
-        content=" ".join(f"palabra-{index}" for index in range(1400)),
+        content=" ".join(f"palabra{index:04d}" for index in range(1400)),
         source="large.md",
     )
 
@@ -45,6 +45,8 @@ def test_splitter_uses_stable_ids_and_overlap() -> None:
     assert len(first) >= 2
     assert [chunk.id for chunk in first] == [chunk.id for chunk in second]
     assert all(chunk.source == "large.md" for chunk in first)
+    assert all(count_lexical_tokens(chunk.content) <= 500 for chunk in first)
+    assert first[0].content.split()[-50:] == first[1].content.split()[:50]
 
 
 @pytest.mark.asyncio
@@ -68,4 +70,36 @@ async def test_ingestion_is_idempotent(tmp_path: Path) -> None:
 
     assert first == {"documents": 1, "chunks_added": 1, "documents_skipped": 0}
     assert second == {"documents": 1, "chunks_added": 0, "documents_skipped": 1}
+    assert len(repository.items) == 1
+
+
+@pytest.mark.asyncio
+async def test_ingestion_reindexes_when_embedding_or_chunking_changes(tmp_path: Path) -> None:
+    data_dir = tmp_path / "data"
+    data_dir.mkdir()
+    (data_dir / "knowledge.md").write_text(
+        "Redis conserva las claves de idempotencia durante 24 horas.", encoding="utf-8"
+    )
+    repository = MemoryRepository()
+    manifest_path = tmp_path / "vectorstore" / "manifest.json"
+
+    first = await RAGIngestor(
+        repository,
+        data_dir=data_dir,
+        manifest_path=manifest_path,
+        chunk_size=500,
+        chunk_overlap=50,
+        index_signature="embedding-a:500:50",
+    ).ingest()
+    second = await RAGIngestor(
+        repository,
+        data_dir=data_dir,
+        manifest_path=manifest_path,
+        chunk_size=500,
+        chunk_overlap=50,
+        index_signature="embedding-b:500:50",
+    ).ingest()
+
+    assert first["chunks_added"] == 1
+    assert second == {"documents": 1, "chunks_added": 1, "documents_skipped": 0}
     assert len(repository.items) == 1

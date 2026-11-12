@@ -42,6 +42,7 @@ Ejemplo de salida:
 - Recuperación asíncrona de los cuatro fragmentos más relevantes por defecto.
 - Filtrado de fragmentos con relevancia inferior a `0.30` y similitud coseno.
 - Respuesta Pydantic con estado de respaldo, confianza, fuentes, fragmentos y puntajes.
+- Validación de citas contra los fragmentos realmente recuperados.
 - Respuesta explícita `No lo sé con la información disponible.` cuando no hay evidencia.
 
 ## Requisitos
@@ -127,6 +128,12 @@ rag-local ingest
 rag-local query "¿Cuándo debe escalarse un incidente de PostgreSQL?"
 ```
 
+### Demostración completa de RAG
+
+```bash
+python examples/rag_demo.py
+```
+
 También se puede usar el punto de entrada general:
 
 ```bash
@@ -171,7 +178,7 @@ requieren credenciales.
 .
 ├── data/                         # Base documental de ejemplo
 ├── docs/                         # Arquitectura y guías operativas
-├── examples/extraction_demo.py   # Demostración asíncrona de extracción
+├── examples/                     # Demostraciones asíncronas de extracción y RAG
 ├── src/incident_intelligence/
 │   ├── cli/                      # Comandos ejecutables
 │   ├── extraction/               # Esquema, cadena LCEL y servicio
@@ -194,4 +201,5 @@ requieren credenciales.
 
 Detalles del cliente asíncrono en [docs/llm_client.md](docs/llm_client.md), del pipeline de
 extracción en [docs/extraction_pipeline.md](docs/extraction_pipeline.md) y del flujo completo en
-[docs/architecture.md](docs/architecture.md).
+[docs/architecture.md](docs/architecture.md). La ingesta, recuperación y validación de respuestas
+se describen en [docs/rag_local.md](docs/rag_local.md).

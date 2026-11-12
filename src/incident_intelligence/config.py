@@ -33,7 +33,7 @@ class Settings(BaseSettings):
     data_dir: Path = Path("data")
     chroma_persist_dir: Path = Path("vectorstore")
     chroma_collection: str = "incident-knowledge"
-    rag_top_k: int = Field(default=4, ge=1, le=20)
+    rag_top_k: int = Field(default=4, ge=3, le=5)
     rag_min_relevance_score: float = Field(default=0.3, ge=0, le=1)
     rag_chunk_size: int = Field(default=500, ge=500, le=8_000)
     rag_chunk_overlap: int = Field(default=50, ge=0, le=2_000)

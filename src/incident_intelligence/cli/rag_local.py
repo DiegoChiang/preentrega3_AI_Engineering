@@ -5,11 +5,9 @@ import asyncio
 import json
 
 from incident_intelligence.config import Settings
-from incident_intelligence.integrations.langchain import build_openai_embeddings
-from incident_intelligence.rag.generation import build_answer_generator
 from incident_intelligence.rag.ingestion import RAGIngestor
-from incident_intelligence.rag.repository import ChromaRepository
-from incident_intelligence.rag.service import RAGService
+from incident_intelligence.rag.repository import ChromaRepository, build_chroma_repository
+from incident_intelligence.rag.service import get_rag_response
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -22,24 +20,24 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def build_repository(settings: Settings) -> ChromaRepository:
-    return ChromaRepository(
-        collection_name=settings.chroma_collection,
-        persist_directory=str(settings.chroma_persist_dir),
-        embedding_function=build_openai_embeddings(settings),
-    )
+    return build_chroma_repository(settings)
 
 
 async def run(command: str, question: str | None = None) -> None:
     settings = Settings()
-    repository = build_repository(settings)
 
     if command == "ingest":
+        repository = build_repository(settings)
         ingestor = RAGIngestor(
             repository,
             data_dir=settings.data_dir,
             manifest_path=settings.chroma_persist_dir / "manifest.json",
             chunk_size=settings.rag_chunk_size,
             chunk_overlap=settings.rag_chunk_overlap,
+            index_signature=(
+                f"{settings.openai_embedding_model}:"
+                f"{settings.rag_chunk_size}:{settings.rag_chunk_overlap}"
+            ),
         )
         result = await ingestor.ingest()
         print(json.dumps(result, ensure_ascii=False, indent=2))
@@ -47,13 +45,7 @@ async def run(command: str, question: str | None = None) -> None:
 
     if question is None:
         raise ValueError("La consulta requiere una pregunta")
-    service = RAGService(
-        repository,
-        build_answer_generator(settings),
-        top_k=settings.rag_top_k,
-        min_relevance_score=settings.rag_min_relevance_score,
-    )
-    result = await service.get_rag_response(question)
+    result = await get_rag_response(question, settings)
     print(json.dumps(result.model_dump(mode="json"), ensure_ascii=False, indent=2))
 
 

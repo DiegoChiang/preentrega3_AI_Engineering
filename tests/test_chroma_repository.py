@@ -47,12 +47,17 @@ async def test_chroma_add_search_and_delete(tmp_path: Path) -> None:
     ]
 
     await repository.add(chunks)
-    results = await repository.search("Redis", k=1)
+    reopened_repository = ChromaRepository(
+        collection_name="test-knowledge",
+        persist_directory=str(tmp_path / "chroma"),
+        embedding_function=KeywordEmbeddings(),
+    )
+    results = await reopened_repository.search("Redis", k=1)
 
     assert len(results) == 1
     assert results[0].id == "redis-chunk"
     assert results[0].source == "redis.txt"
 
-    await repository.delete(["redis-chunk"])
-    remaining = await repository.search("Redis", k=2)
+    await reopened_repository.delete(["redis-chunk"])
+    remaining = await reopened_repository.search("Redis", k=2)
     assert all(chunk.id != "redis-chunk" for chunk in remaining)
