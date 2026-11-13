@@ -2,9 +2,14 @@
 
 from typing import Any, Protocol
 
+from langchain_core.exceptions import OutputParserException
+from pydantic import ValidationError
+
 from incident_intelligence.config import Settings
 from incident_intelligence.integrations.langchain import build_chat_model
 from incident_intelligence.rag.schemas import RAGDraft
+
+UNKNOWN_ANSWER = "No lo sé con la información disponible."
 
 
 class AnswerGenerator(Protocol):
@@ -16,10 +21,18 @@ class LangChainAnswerGenerator:
         self._chain = chain
 
     async def generate(self, *, query: str, context: str) -> RAGDraft:
-        result = await self._chain.ainvoke({"query": query, "context": context})
-        if isinstance(result, RAGDraft):
-            return result
-        return RAGDraft.model_validate(result)
+        try:
+            result = await self._chain.ainvoke({"query": query, "context": context})
+            if isinstance(result, RAGDraft):
+                return result
+            return RAGDraft.model_validate(result)
+        except (OutputParserException, ValidationError):
+            return RAGDraft(
+                answer=UNKNOWN_ANSWER,
+                grounded=False,
+                confidence=0,
+                cited_chunk_ids=[],
+            )
 
 
 def build_answer_generator(settings: Settings) -> LangChainAnswerGenerator:
