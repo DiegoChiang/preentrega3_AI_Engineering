@@ -1,5 +1,6 @@
 """Cadena LCEL para extraer entidades técnicas."""
 
+import json
 import logging
 from collections.abc import Mapping
 from typing import Any
@@ -46,6 +47,67 @@ def _finish_reason(raw: Any) -> str | None:
     return None
 
 
+def _decode_json_value(value: Any) -> Any:
+    """Decodifica envolturas JSON que algunos modelos devuelven como texto."""
+
+    current = value
+    for _ in range(2):
+        if not isinstance(current, str):
+            break
+        try:
+            decoded = json.loads(current)
+        except json.JSONDecodeError:
+            break
+        if decoded == current:
+            break
+        current = decoded
+    return current
+
+
+def _normalize_candidate(value: Any) -> Any:
+    candidate = _decode_json_value(value)
+    if not isinstance(candidate, Mapping):
+        return candidate
+    normalized = dict(candidate)
+    for key in ("tecnologias", "technologies"):
+        if key not in normalized:
+            continue
+        technologies = _decode_json_value(normalized[key])
+        if isinstance(technologies, str):
+            technologies = [technologies]
+        normalized[key] = technologies
+    return normalized
+
+
+def _raw_tool_arguments(raw: Any) -> Mapping[str, Any] | None:
+    """Recupera argumentos aunque el parser estructurado del proveedor haya fallado."""
+
+    candidates: list[Any] = []
+    tool_calls = getattr(raw, "tool_calls", None)
+    if isinstance(tool_calls, list):
+        for call in tool_calls:
+            if isinstance(call, Mapping):
+                candidates.append(call.get("args") or call.get("arguments"))
+
+    additional = getattr(raw, "additional_kwargs", None)
+    if isinstance(additional, Mapping):
+        raw_calls = additional.get("tool_calls", [])
+        if isinstance(raw_calls, list):
+            for call in raw_calls:
+                if not isinstance(call, Mapping):
+                    continue
+                function = call.get("function", {})
+                if isinstance(function, Mapping):
+                    candidates.append(function.get("arguments"))
+    candidates.append(getattr(raw, "content", None))
+
+    for candidate in candidates:
+        normalized = _normalize_candidate(candidate)
+        if isinstance(normalized, Mapping):
+            return normalized
+    return None
+
+
 def validate_structured_response(value: Any) -> TechnicalEntityExtraction:
     """Valida la envoltura de salida y detecta respuestas truncadas."""
 
@@ -61,19 +123,25 @@ def validate_structured_response(value: Any) -> TechnicalEntityExtraction:
 
         parsing_error = value.get("parsing_error")
         if parsing_error is not None:
-            logger.warning(
-                "Fallo de validación de salida estructurada",
-                extra={"error_type": type(parsing_error).__name__},
-            )
-            raise StructuredOutputError("El modelo devolvió una salida incompleta o mal formada")
-        parsed = value.get("parsed")
+            recovered = _raw_tool_arguments(value.get("raw"))
+            if recovered is None:
+                logger.warning(
+                    "Fallo de validación de salida estructurada",
+                    extra={"error_type": type(parsing_error).__name__},
+                )
+                raise StructuredOutputError(
+                    "El modelo devolvió una salida incompleta o mal formada"
+                )
+            parsed = recovered
+        else:
+            parsed = value.get("parsed")
 
     if parsed is None:
         logger.warning("El modelo no devolvió una salida estructurada")
         raise StructuredOutputError("El modelo no devolvió una salida estructurada")
 
     try:
-        return TechnicalEntityExtraction.model_validate(parsed)
+        return TechnicalEntityExtraction.model_validate(_normalize_candidate(parsed))
     except ValidationError as exc:
         logger.warning(
             "La salida no cumple el contrato técnico",

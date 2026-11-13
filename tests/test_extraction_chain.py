@@ -5,6 +5,7 @@ import pytest
 from langchain_core.runnables import RunnableLambda
 
 import incident_intelligence.extraction.chain as chain_module
+import incident_intelligence.integrations.langchain as langchain_module
 from incident_intelligence.config import Settings
 from incident_intelligence.errors import StructuredOutputError
 from incident_intelligence.extraction.schemas import Criticality, TechnicalEntityExtraction
@@ -89,6 +90,50 @@ def test_validation_accepts_an_already_valid_model() -> None:
     result = valid_extraction()
 
     assert chain_module.validate_structured_response(result) is result
+
+
+def test_validation_recovers_stringified_anthropic_tool_arguments() -> None:
+    raw = SimpleNamespace(
+        response_metadata={"stop_reason": "end_turn"},
+        tool_calls=[
+            {
+                "args": {
+                    "tecnologias": '["Redis", "FastAPI"]',
+                    "nivel_de_criticidad": "media",
+                    "resumen_tecnico": "Redis presenta presion de memoria en la API.",
+                }
+            }
+        ],
+    )
+
+    result = chain_module.validate_structured_response(
+        {"raw": raw, "parsed": None, "parsing_error": ValueError("lista invalida")}
+    )
+
+    assert result.technologies == ["Redis", "FastAPI"]
+    assert result.criticality is Criticality.MEDIUM
+
+
+def test_anthropic_model_omits_unsupported_temperature(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    captured: dict[str, Any] = {}
+
+    def fake_chat_anthropic(**kwargs: Any) -> object:
+        captured.update(kwargs)
+        return object()
+
+    monkeypatch.setattr("langchain_anthropic.ChatAnthropic", fake_chat_anthropic)
+    settings = Settings(
+        _env_file=None,
+        llm_provider="anthropic",
+        anthropic_api_key="test-key",
+        llm_temperature=0.7,
+    )
+
+    langchain_module.build_chat_model(settings)
+
+    assert "temperature" not in captured
 
 
 @pytest.mark.asyncio
